@@ -1,8 +1,11 @@
 # Anti-slop checklist
 
-Run against a screenshot and the code. Any "yes" in Part A is a fail.
+Copy to `.design/checklist.md` and fill it against a screenshot and the code. The design gate
+reads that copy: every box ticked, every B line answered after the arrow, nothing deleted.
 
 ## A. Tells (instant fail)
+Tick a box only once you have confirmed the tell is ABSENT from the screenshot and the code.
+A tell you find is a fix, never a tick.
 - [ ] Centred headline + eyebrow label + subtitle + two buttons, repeated in every section
 - [ ] Row of three or four equal cards with an icon, title, two lines
 - [ ] Purple/blue or pink/orange gradient anywhere; "glow" box-shadows
@@ -14,15 +17,15 @@ Run against a screenshot and the code. Any "yes" in Part A is a fail.
 - [ ] Emoji as icons; "team at laptop" stock photos; generic 3D blob illustrations
 - [ ] Copy says "Unleash", "Elevate", "Seamless", "Supercharge", "Next-gen"
 
-## B. Decisions (each must have an answer you can state)
-- [ ] What is the ONE idea the hero expresses, in words of the subject's world?
-- [ ] Which two typefaces, and why do they belong to this subject? What is the scale (list the sizes)?
-- [ ] What is the palette's job? Where is colour *refused*?
-- [ ] Which section breaks the grid, and on purpose?
-- [ ] Where is the single orchestrated motion moment? What does every other motion respond to?
-- [ ] Which image slots are real assets and which are honest placeholders?
+## B. Decisions (answer after the arrow, then tick)
+- [ ] What is the ONE idea the hero expresses, in words of the subject's world? →
+- [ ] Which two typefaces, and why do they belong to this subject? What is the scale (list the sizes)? →
+- [ ] What is the palette's job? Where is colour *refused*? →
+- [ ] Which section breaks the grid, and on purpose? →
+- [ ] Where is the single orchestrated motion moment? What does every other motion respond to? →
+- [ ] Which image slots are real assets and which are honest placeholders? →
 
-## C. Floors
+## C. Floors (tick once verified)
 - [ ] 360px and 1440px screenshots both read correctly; no horizontal scroll
 - [ ] Keyboard: tab order sane, focus visible, Esc closes overlays
 - [ ] Contrast AA on all text, including on images (scrim present)

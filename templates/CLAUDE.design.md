@@ -1,5 +1,6 @@
 ## Design rules (design-stack)
 
+- The design gate enforces these rules with hooks. UI files (.html .css .scss .jsx .tsx .vue .svelte .astro…) stay locked until the user approves DESIGN-BRIEF.md and DESIGN-DIRECTION.md through AskUserQuestion. Run `node .claude/skills/design-director/scripts/gate.mjs status` to see the ledger and the NEXT step. When a hook refuses something, do the step it names; never work around it, and never write `.design/log.jsonl`, the gate script or the hook settings.
 - Before any visual work, read `./DESIGN-BRIEF.md`. If it is missing or unfilled, load the `design-director` skill and let it interview the user into one (two batches of questions, then the user says yes). Do not design from assumptions and do not hand the user a form to fill.
 - Load the `design-director` skill for anything that touches UI, layout, styling, motion, on-screen copy or visual assets. It decides which design skill applies:
   - public-facing / marketing page → `design-taste-frontend`

@@ -8,8 +8,11 @@ Paste the "Continue" section into Claude Code in a folder that has `design-stack
 - `README.md`: the chosen stack and why, install, workflow, the Motion and Higgsfield answers.
 - `install.sh`: offline installer from `vendor/`. `--update` refetches and rewrites `vendor/MANIFEST.md`.
 - `vendor/`: every third-party component, pinned (versions and hashes in `vendor/MANIFEST.md`).
-- `skills/design-director/SKILL.md`: the orchestrator. Interview-first Step 0, Step 4b Assets.
-- `templates/`: brief shape, CLAUDE.md snippet, anti-slop checklist, `design-md/` starting points.
+- `skills/design-director/SKILL.md`: the orchestrator. Interview-first Step 0 with step IDs, Step 4b Assets.
+- `skills/design-director/scripts/gate.mjs`: the design gate. Hooks (pre, post, stop) plus `status` and `verify`.
+- `templates/`: brief and direction shapes (Key: lines the gate parses), CLAUDE.md snippet, anti-slop
+  checklist (tickable), `gate-hooks.json`, `design-md/` starting points.
+- `tests/gate.test.mjs`: `node --test tests/gate.test.mjs` (4 tests, one full brief → finish run).
 
 ## Decisions (do not re-litigate)
 
@@ -42,16 +45,45 @@ Resolved questions:
   (checksum-verified) or vendor with `--update`.
 - **Hook install**: the installer merges `vendor/impeccable/hooks/settings.project.json` into
   `.claude/settings.local.json` (project) or `~/.claude/settings.json` (global, path rewritten to
-  `$HOME/...`), keeps a `.bak`, skips if an impeccable hook is already there.
+  `$HOME/...`) and keeps a `.bak`. A rerun replaces the entries it installed before (it used to skip
+  them), so hook changes reach existing installs.
 - **Brief**: the director interviews (two batches) and writes `DESIGN-BRIEF.md`; install.sh no longer
   drops an empty brief into the project.
+- **Design gate (2026-10-17)**: added after a real run skipped steps the prose required: the
+  visual-references question went into "Other", the stack question was answered by the model, the
+  no-references picker was replaced by a four-family menu, approvals were asked in chat. Root cause:
+  AskUserQuestion's four-question cap against "two batches", and nothing that checked. Decisions:
+  - Enforcement is Claude Code hooks, not prose. PreToolUse refuses UI writes (Write/Edit/MultiEdit/
+    NotebookEdit, MCP write tools, shell commands naming a UI file, scaffolders) until every brief and
+    direction step has evidence and both approvals hold.
+  - Evidence = the user's AskUserQuestion answers, recorded by the PostToolUse hook into
+    `.design/log.jsonl`, keyed by the question's `header` (= step ID). The model cannot pre-fill
+    `answers` (refused) and cannot write the log, the gate script or the hook settings (refused).
+  - Approvals are the first option of an `OK-…` question, bound to the sha256 of the approved file.
+  - A batch is a round, not a tool call: five questions go as two calls. Q6v is its own question.
+  - The gate's hooks go to `.claude/settings.json` (shared, usually committed), not settings.local, so
+    the gate binds everyone on the project. No install flag skips it. Global installs enforce only
+    where `.design/` exists.
+  - Fail closed: the PreToolUse command ends `|| exit 2`, so a missing node blocks instead of passing;
+    internal errors deny writes.
+  - Self-reported finish steps (critique, checklist, audit) are checked for presence, freshness and
+    completeness only; detector, inspector and answers are the hard evidence.
 
 ## Verified
 
 - Clean-room project install with proxies pointed at a dead port: all skills, agents, hook, MCP
   entries, CLAUDE.md written; existing `.mcp.json` and `settings.local.json` contents preserved.
 - Global install into a throwaway `HOME` with a pre-existing `settings.json` containing other hooks:
-  merged, backup kept; rerun says "already present".
+  merged, backup kept. (Rerun now updates instead of "already present"; see the gate run below.)
+- Design gate, 2026-10-17: `node --test tests/gate.test.mjs` passes (UI writes refused before the
+  approvals, protected files refused, pre-filled answers refused, early approvals refused, a full
+  interview → picker → approvals → build → finish run, approval dropped when the file changes, any UI
+  change reopening screenshots and detector). Clean-room project install with a pre-existing
+  `.claude/settings.json` hook: user hook kept, gate hooks added, rerun updates without duplicates.
+  The installed hook command strings, run through `sh -c` with `CLAUDE_PROJECT_DIR` and hook JSON on
+  stdin: Write of index.html denied with the NEXT step, read-only Bash untouched, `PATH` without node
+  → exit 2. `gate.mjs verify` with the vendored detector: slop page 7 findings (ok false), clean page
+  ok true.
 - `--update` on a copy of the repo with network: every component refetched, manifest rewritten.
 - Vendored impeccable launcher answers `engine-probe` with `impeccable-engine 0.1.15` offline.
 - On a sample slop page from the test install: impeccable `detect` found 9 anti-patterns offline with the vendored engine; tasteskill `lint.mjs` 6 FAIL / 4 WARN; tasteskill `inspect.mjs` drove Brave (auto-detected by its `lib/cdp.mjs`, no `CHROME_PATH` needed) and wrote screenshots at 1440/768/390.
@@ -67,6 +99,15 @@ Resolved questions:
    leave it to the skill's own prompt (currently: left to the skill).
 4. Consider pinning `npx -y skills add` to a `skills` CLI version in `--update` if a future CLI
    changes the lock-file shape.
+5. Design gate: not yet run inside a live, logged-in Claude Code session (the CLI on the build
+   machine was logged out). The AskUserQuestion result shape the post hook reads,
+   `{ questions, answers: { <question text>: <label> } }`, was taken from a real session transcript,
+   and the model's own call carried no `answers`; the docs do not state that PostToolUse fires for
+   AskUserQuestion, only that it fires after any tool that completes. First live run: confirm a
+   Write of a UI file is refused, that answering a question with header `Q1` adds a line to
+   `.design/log.jsonl`, and that `OK-brief` approves. If the log stays empty, see `answersOf()`.
+6. Existing installs keep their old CLAUDE.md rules block (install.sh appends it only once). Rerun
+   install.sh for the gate itself; paste the new first bullet of `templates/CLAUDE.design.md` by hand.
 
 ## Continue
 

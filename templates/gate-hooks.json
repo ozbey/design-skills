@@ -1,0 +1,40 @@
+{
+  "description": "Design gate: refuses UI writes until the design director's brief and direction are approved, records the user's AskUserQuestion answers as evidence, and pushes back once at Stop while a step is open. `|| exit 2` fails closed when node itself cannot run.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^(Write|Edit|MultiEdit|NotebookEdit|Bash|AskUserQuestion|mcp__.*)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/skills/design-director/scripts/gate.mjs\" pre || exit 2",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/skills/design-director/scripts/gate.mjs\" post",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/skills/design-director/scripts/gate.mjs\" stop",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}
