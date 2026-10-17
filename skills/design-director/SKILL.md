@@ -37,6 +37,10 @@ Batch 1, the facts:
 Batch 2, the taste:
 6. Three to five references (sites, apps, printed objects, places), each with WHY: the
    type, the density, the motion, the colour discipline, the mood.
+   In the same question, offer (optional, say so) visual references: screenshots,
+   moodboard images, Figma / Dribbble / Pinterest links, photos of printed objects.
+   None is a fine answer. If they share any, look at each one and write what you see
+   (type, palette, density, mood) into the brief's Visual references line.
    If they have none, run the picker below instead of asking again.
 7. The knobs, 1 to 5 each: energy (calm→loud), density (airy→dense), motion
    (none→cinematic/scroll-driven). Tone of voice in three words.

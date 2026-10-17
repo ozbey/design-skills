@@ -16,6 +16,7 @@ Every line gets an answer or "unknown". "Modern and clean" is not an answer; it 
 - URL / name → what to steal (type? density? motion? colour discipline?)
 -
 -
+- Visual references (optional): screenshot / image path / Figma link → what you see in it (type, palette, density, mood)
 - Starting point (only if no references): design-md/<file> → take: … / replace: …
 
 ## Direction knobs
