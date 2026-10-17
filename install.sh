@@ -9,6 +9,10 @@
 #   bash install.sh --no-hook        install impeccable without its design-detector hook
 #   bash install.sh --manifest       only rewrite vendor/MANIFEST.md and exit
 #
+# The design gate (hooks that refuse UI work until the design director's brief and direction
+# are approved) is always installed: into .claude/settings.json so it binds everyone on the
+# project, or ~/.claude/settings.json with --global. No flag skips it.
+#
 # The default path makes no network calls: everything it installs ships in vendor/.
 # Needs node (for JSON merges). The skills themselves need Node 22+ and a
 # Chromium-based browser for their screenshot loops; see README.md.
@@ -25,7 +29,7 @@ for a in "$@"; do
     --no-motion)      MOTION=0 ;;
     --no-hook)        HOOK=0 ;;
     --manifest)       MANIFEST_ONLY=1 ;;
-    -h|--help)        sed -n '2,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -h|--help)        sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) echo "unknown flag: $a (try --help)"; exit 2 ;;
   esac
 done
@@ -41,40 +45,43 @@ NODE_MAJOR=$(node -p 'process.versions.node.split(".")[0]')
 
 if (( GLOBAL )); then
   DEST="$HOME/.claude/skills"; DEST_AGENTS="$HOME/.claude/agents"
-  SETTINGS="$HOME/.claude/settings.json"
-  HOOK_BIN='$HOME/.claude/skills/impeccable/scripts/impeccable'
+  SETTINGS="$HOME/.claude/settings.json"; GATE_SETTINGS="$HOME/.claude/settings.json"
+  HOOK_ROOT='$HOME/.claude'
 else
   DEST=".claude/skills"; DEST_AGENTS=".claude/agents"
-  SETTINGS=".claude/settings.local.json"
-  HOOK_BIN='${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/impeccable'
+  SETTINGS=".claude/settings.local.json"; GATE_SETTINGS=".claude/settings.json"
+  HOOK_ROOT='${CLAUDE_PROJECT_DIR}/.claude'
 fi
 
 # ---------------------------------------------------------------- helpers
 
-# merge_hooks <settings file> <template json> <launcher path to substitute>
+# merge_hooks <settings file> <template json> <marker>
+# Entries carrying <marker> are replaced, so a rerun brings the hooks up to date.
+# The template's ${CLAUDE_PROJECT_DIR}/.claude paths become $HOOK_ROOT.
 merge_hooks() {
-  node - "$1" "$2" "$3" <<'EOF'
+  node - "$1" "$2" "$3" "$HOOK_ROOT" <<'EOF'
 const fs = require('fs'), path = require('path');
-const [file, tpl, bin] = process.argv.slice(2);
+const [file, tpl, marker, root] = process.argv.slice(2);
 let cur = {};
 if (fs.existsSync(file)) {
   try { cur = JSON.parse(fs.readFileSync(file, 'utf8')); }
   catch (e) { console.log('  cannot parse ' + file + '; leaving it alone, hook NOT installed'); process.exit(1); }
 }
-const marker = 'skills/impeccable/scripts/impeccable';
-if (JSON.stringify(cur.hooks || {}).includes(marker)) { console.log('  hook already present in ' + file); process.exit(0); }
 const t = JSON.parse(fs.readFileSync(tpl, 'utf8'));
-const from = '${CLAUDE_PROJECT_DIR}/.claude/skills/impeccable/scripts/impeccable';
 cur.hooks = cur.hooks || {};
+const had = JSON.stringify(cur.hooks).includes(marker);
+for (const [ev, entries] of Object.entries(cur.hooks)) {
+  if (Array.isArray(entries)) cur.hooks[ev] = entries.filter((e) => !JSON.stringify(e).includes(marker));
+}
 for (const [ev, entries] of Object.entries(t.hooks || {})) {
-  const fixed = JSON.parse(JSON.stringify(entries).split(from).join(bin));
+  const fixed = JSON.parse(JSON.stringify(entries).split('${CLAUDE_PROJECT_DIR}/.claude').join(root));
   cur.hooks[ev] = [...(cur.hooks[ev] || []), ...fixed];
 }
 let note = '';
 if (fs.existsSync(file)) { fs.copyFileSync(file, file + '.bak'); note = ' (backup: ' + file + '.bak)'; }
 fs.mkdirSync(path.dirname(file), { recursive: true });
 fs.writeFileSync(file, JSON.stringify(cur, null, 2) + '\n');
-console.log('  hook written to ' + file + note);
+console.log('  hook ' + (had ? 'updated in ' : 'written to ') + file + note);
 EOF
 }
 
@@ -310,7 +317,7 @@ install_all() {
     fi
     if (( HOOK )); then
       if [[ -f "$VENDOR/impeccable/hooks/settings.project.json" ]]; then
-        merge_hooks "$SETTINGS" "$VENDOR/impeccable/hooks/settings.project.json" "$HOOK_BIN"
+        merge_hooks "$SETTINGS" "$VENDOR/impeccable/hooks/settings.project.json" 'skills/impeccable/scripts/impeccable'
       else
         warn "no hook template vendored; run install.sh --update"
       fi
@@ -342,9 +349,14 @@ install_all() {
   rm -rf "$DEST/design-director" && cp -R "$HERE/skills/design-director" "$DEST/"
   cp "$HERE/templates/anti-slop-checklist.md" "$DEST/design-director/anti-slop-checklist.md"
   cp "$HERE/templates/DESIGN-BRIEF.md" "$DEST/design-director/brief-template.md"
+  cp "$HERE/templates/DESIGN-DIRECTION.md" "$DEST/design-director/direction-template.md"
   mkdir -p "$DEST/design-director/design-md"
   cp "$HERE"/templates/design-md/*.md "$HERE"/templates/design-md/LICENSE.rohitg00 "$DEST/design-director/design-md/" 2>/dev/null
-  ok "skill + checklist + brief template + $(ls "$DEST/design-director/design-md"/*--*.md 2>/dev/null | wc -l | tr -d ' ') DESIGN.md starting points"
+  ok "skill + gate + checklist + brief and direction templates + $(ls "$DEST/design-director/design-md"/*--*.md 2>/dev/null | wc -l | tr -d ' ') DESIGN.md starting points"
+
+  say "design gate (always on)"
+  merge_hooks "$GATE_SETTINGS" "$HERE/templates/gate-hooks.json" 'skills/design-director/scripts/gate.mjs'
+  (( GLOBAL )) && echo "  global install: the gate enforces in projects that have a .design/ folder (the director creates it at step 0)"
 
   if (( ! GLOBAL )); then
     if [[ -f CLAUDE.md ]] && ! grep -q "Design rules (design-stack)" CLAUDE.md; then
@@ -357,9 +369,10 @@ install_all() {
   browser_hint
 
   echo
-  echo "Installed. In Claude Code:"
-  echo "  1. /impeccable init            (once per project; writes PRODUCT.md)"
-  echo "  2. \"run the design director\"  (it interviews you and writes DESIGN-BRIEF.md; no form to fill)"
+  echo "Installed. In Claude Code, say \"run the design director\": it interviews you, writes DESIGN-BRIEF.md"
+  echo "(no form to fill) and runs /impeccable init when the surface needs it. UI files stay locked until"
+  echo "you approve the brief and the direction. Where a project stands:"
+  echo "  node $( (( GLOBAL )) && echo '~/.claude' || echo '.claude' )/skills/design-director/scripts/gate.mjs status"
   (( MOTION )) && echo "  Motion MCP: if /motion cannot search docs, enable the 'motion' server in your MCP settings (claude mcp list)."
 }
 
