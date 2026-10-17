@@ -1,0 +1,1 @@
+The Motion AI Kit repository (github.com/motiondivision/ai-kit) declares "license": "MIT" in packages/motion-ai/package.json and its install guide (motion.dev/docs/ai-kit-install) states the installer and the /motion skill are "free and open source (MIT)". The repository ships no LICENSE file as of 2026-10-17.
