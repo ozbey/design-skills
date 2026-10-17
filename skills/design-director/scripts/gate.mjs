@@ -414,7 +414,11 @@ function stop(input) {
 // ---------------------------------------------------------------- main
 
 const [cmd] = process.argv.slice(2);
-if (['pre', 'post', 'stop'].includes(cmd)) {
+// imported (the vibe gate reads evaluate()) rather than run: no CLI, no side effects
+let entry = null; try { entry = realpathSync(process.argv[1]); } catch {}
+if (entry !== realpathSync(fileURLToPath(import.meta.url))) {
+  // nothing to run
+} else if (['pre', 'post', 'stop'].includes(cmd)) {
   let input = {};
   try { input = JSON.parse(readFileSync(0, 'utf8') || '{}'); } catch {}
   try { ({ pre, post, stop })[cmd](input); }
